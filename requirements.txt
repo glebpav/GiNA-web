@@ -1,0 +1,6 @@
+nskit~=1.8.0
+numpy~=1.26.4
+setuptools~=68.2.0
+flask~=3.0.3
+networkx~=3.2.1
+matplotlib~=3.8.4
