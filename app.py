@@ -2,6 +2,7 @@ from flask import Flask, jsonify
 from flask import request
 from flask_cors import CORS
 from script import run_script
+from script_v3 import run_script_v3
 from script_with_markers import run_script_with_markers
 
 app = Flask(__name__)
@@ -22,6 +23,15 @@ def run_script_2():
     # print("get_json: ", request.get_json().get('sequence'))
     structure = request.get_json().get('structure')
     response = jsonify(run_script_with_markers(structure_str=structure))
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
+
+
+@app.route('/run-script3', methods=['POST'])
+def run_script_3():
+    # print("get_json: ", request.get_json().get('sequence'))
+    structure = request.get_json().get('structure')
+    response = jsonify(run_script_v3(structure=structure))
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
 
