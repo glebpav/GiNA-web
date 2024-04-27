@@ -211,7 +211,7 @@ def compute_graph(sequence):
     pos = nx.spring_layout(G, dim=3, iterations=5000)
     pos = np.array([value for value in pos.values()])
 
-    pos, A = optimize(
+    pos, adj_list = optimize(
         na,
         pos,
         elastic_inf=5,
