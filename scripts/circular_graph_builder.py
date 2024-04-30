@@ -2,7 +2,7 @@ import json
 
 from nskit import *
 from nskit.draw.circular_graph import CircularGraph
-from scripts.script_v3 import adjacency_matrix_to_list
+from scripts.graph_3d_builder import adjacency_matrix_to_list
 
 
 def build_circular_graph(structure):
