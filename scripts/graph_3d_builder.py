@@ -4,6 +4,7 @@ import json
 
 import numpy as np
 import networkx as nx
+from flask import Response, jsonify
 
 from nskit import *
 
@@ -230,5 +231,9 @@ def compute_graph(sequence):
 
 
 def build_3d_graph(structure):
-    pos, adj_list, knots_list = compute_graph(structure)
-    return json.dumps({'pos': pos, 'adj': adj_list, 'knots': knots_list})
+    try:
+        pos, adj_list, knots_list = compute_graph(structure)
+        return jsonify(json.dumps({'pos': pos, 'adj': adj_list, 'knots': knots_list}))
+    except Exception as e:
+        print(str(e))
+        return Response(str(e), status=409,)
