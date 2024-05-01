@@ -236,4 +236,4 @@ def build_3d_graph(structure):
         return jsonify(json.dumps({'pos': pos, 'adj': adj_list, 'knots': knots_list}))
     except Exception as e:
         print(str(e))
-        return Response(str(e), status=409,)
+        return Response(str(e), status=422)

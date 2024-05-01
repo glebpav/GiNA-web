@@ -17,5 +17,5 @@ def build_circular_graph(structure):
     except Exception as e:
         return Response(
             str(e),
-            status=409,
+            status=422,
         )
