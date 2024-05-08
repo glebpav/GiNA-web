@@ -6,7 +6,7 @@ import numpy as np
 import networkx as nx
 from flask import Response, jsonify
 
-from nskit import *
+from naskit import *
 
 
 def find_centers(pos, loops):

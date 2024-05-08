@@ -1,7 +1,7 @@
 import json
 
-from nskit import *
-from nskit.draw.circular_graph import CircularGraph
+from naskit import *
+from naskit.draw.circular_graph import CircularGraph
 from scripts.graph_3d_builder import adjacency_matrix_to_list
 from flask import Response, jsonify
 
