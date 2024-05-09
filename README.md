@@ -12,7 +12,7 @@ Python-base backend part of GiNA for nts coordinates calculation
     ```
 4. Run in terminal
     ```bash
-    docker container run -d -p 80:80 graph-builder
+    docker container run -d -p [port]:80 graph-builder
     ```
     Here in [port] you can specify port for your api
 
@@ -22,7 +22,7 @@ Python-base backend part of GiNA for nts coordinates calculation
 
    Method: `POST`
 
-   URL: `http://0.0.0.0:80/graph-2d`
+   URL: `http://127.0.0.1:[port]/graph-2d`
 
    Body: 
 
@@ -36,7 +36,7 @@ Python-base backend part of GiNA for nts coordinates calculation
 
    Method: `POST`
 
-   URL: `http://0.0.0.0:80/graph-3d`
+   URL: `http://127.0.0.1:[port]/graph-3d`
 
    Body: 
 
