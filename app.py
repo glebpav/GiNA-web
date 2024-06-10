@@ -12,7 +12,11 @@ CORS(app)
 
 @app.route(f'/{CIRCULAR_GRAPH_URN}', methods=['POST'])
 def circular_graph():
-    structure = request.get_json().get('structure')
+    data = request.get_json()
+    if isinstance(data, str):
+        data = json.loads(data)
+        
+    structure = data.get('structure')
     response = build_circular_graph(structure=structure)
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
@@ -20,11 +24,11 @@ def circular_graph():
 
 @app.route(f'/{GRAPH_3D_URN}', methods=['POST'])
 def graph_3d():
-    structure = request.get_json().get('structure')
+    data = request.get_json()
+    if isinstance(data, str):
+        data = json.loads(data)
+        
+    structure = data.get('structure')
     response = build_3d_graph(structure=structure)
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
-
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=80)
