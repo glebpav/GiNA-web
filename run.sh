@@ -1,4 +1,4 @@
 #!/bin/bash
 
-flask run --debug --host 0.0.0.0 --port 31416
-# waitress-serve --port=31416
+# flask --app app:create_app run --debug --port 8080
+waitress-serve --port=8080 --call 'app:create_app'
