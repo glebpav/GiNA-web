@@ -78,24 +78,30 @@ def optimize(
     l0 = 1
 
     repulsion_mask = np.ones((len(A), len(A)))
-    target_edge_ratios = np.ones((len(A), len(A)))
+    target_edge_ratios = np.zeros((len(A), len(A)))
+    edge_mask = np.zeros((len(A), len(A)))
+    marker_mask = np.array([500. if idx > len(A_origin) else 1. for idx in range(len(A))])
     displacement = np.zeros((len(A), 3))
     center_force = np.zeros((len(A), 3))
-    elastic_force = np.array([0., 0., 0.])
-    repulsion_force = np.array([0., 0., 0.])
 
     diagonal_mask = np.eye(len(A), dtype=bool)
     repulsion_mask[diagonal_mask] = 0
-    repulsion_mask[:, len(A):] = 0
-    repulsion_mask[len(A):, :] = 20
+    repulsion_mask[:, len(A_origin):] = 0
+    repulsion_mask[len(A_origin):, :] = 2
+
+    for idx1, neibs in A.items():
+        for idx2 in neibs:
+            if idx1 < len(A_origin) and idx2 < len(A_origin):
+                edge_mask[idx1, idx2] = 1
+
+            target_edge_ratios[idx1, idx2] = 1
+            target_edge_ratios[idx2, idx1] = 1
 
     """! про итерирование по хеликсу уже написал"""
     for h in na.knot_helixes:
         for idx, (i, j) in enumerate(h):
             target_edge_ratios[i, j] = helix_ratio
             target_edge_ratios[j, i] = helix_ratio
-
-    np.where(na.knot_helixes[0])
 
     for knot in [list(na.helixes[idx]) for idx in na.knots]:
         for idx, (i, j) in enumerate(knot):
@@ -109,8 +115,6 @@ def optimize(
         centers = find_centers(pos, loops)
         l0 = get_avg_connection_number(pos, na, loop_points_idxes)
 
-        repulsion_force *= 0
-
         """! этот цикл приемлем, ок"""
         for center_idx, center in enumerate(centers):
             r0 = get_loop_radius(l0, len(loops[center_idx]))
@@ -118,14 +122,47 @@ def optimize(
             distance = np.linalg.norm(delta, axis=1)
             center_force[loops[center_idx]] = (-2) * (1 - r0 / np.where(distance < 0.001, 0.001, distance))[:, np.newaxis] * delta
 
-        """! это цикл по всем нуклеотидам в цепочке и по их соседям - слишком долго
-        ! нужно сделать через матрицы сразу на все точки"""
-
         delta = pos.reshape(-1, 1, 3) - pos
         dists = np.linalg.norm(delta, axis=-1)
         dists = np.where(dists < 0.001, 0.001, dists)
 
-        for i in range(len(A)):
+        # Calculate elastic forces
+        elastic_factors = (-2) * (marker_mask * edge_mask * (1 - (l0 * target_edge_ratios / dists)))[:, :, np.newaxis]
+        elastic_forces = (elastic_factors * delta).sum(axis=1)
+        # print(f"{np.shape(elastic_forces)=}")
+
+        # Calculate repulsion forces
+        repulsion_factors = (repulsion_mask * np.power(dists, -3))[:, :, np.newaxis]
+        repulsion_forces = (repulsion_factors * delta).sum(axis=1)
+        # print(f"{np.shape(repulsion_forces)=}")
+
+        # Calculate displacements
+        displacement = elastic_inf * elastic_forces + repulsion_inf * repulsion_forces
+        # displacement = repulsion_inf * repulsion_forces
+        # displacement = elastic_inf * elastic_forces
+        # print(f"{elastic_forces}")
+        # print(f"{displacement=};")
+
+        """print("here1")
+
+        elastic_force = (
+                (-2) * (1 - (l0 * target_edge_ratios[:len(A), A[:len(A)]] / dists[:len(A), A[:len(A)]])[:, np.newaxis]) * delta[:len(A), A[:len(A)]]
+        ).sum(axis=0)
+
+        print("here2")
+
+        repulsion_force = (
+                (repulsion_mask[:len(A)] * np.power(dists[:len(A), :], -3))[:, np.newaxis] * delta[:len(A), :]
+        ).sum(axis=0)
+
+        print("here3")
+
+        displacement[:len(A)] = (elastic_inf * elastic_force + repulsion_inf * repulsion_force)
+
+        print("here4")"""
+
+
+        """for i in range(len(A)):
 
             elastic_force = (
                     (-2) * (1 - (l0 * target_edge_ratios[i, A[i]] / dists[i, A[i]])[:, np.newaxis]) * delta[i, A[i]]
@@ -136,18 +173,18 @@ def optimize(
             ).sum(axis=0)
 
             displacement[i] = (elastic_inf * elastic_force + repulsion_inf * repulsion_force)
+            # displacement[i] = (repulsion_inf * repulsion_force)
+            # displacement[i] = (elastic_inf * elastic_force)"""
 
         displacement += center_inf * center_force
         displacement = displacement * time_step
-
-        for idx, d in enumerate(displacement):
-            if np.linalg.norm(d) > l0 / 1.3:
-                displacement[idx] = d * ((l0 / 2) / np.linalg.norm(d))
-                # print(np.linalg.norm(displacement[idx]))
+        """displacement = np.where(
+            np.linalg.norm(displacement, axis=0) > l0 / 1/3,
+            displacement * (l0 / 2 / np.linalg.norm(displacement, axis=0)),
+            displacement
+        )"""
 
         pos += displacement
-        # if iteration%25==0:
-        #     print(iteration)
 
     return pos, A
 
