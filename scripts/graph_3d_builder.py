@@ -8,6 +8,15 @@ from flask import Response, jsonify
 
 from naskit import *
 
+MAX_GINA_ITERATIONS = 200
+MAX_SPRINT_ITERATIONS = 2500
+GINA_PROPORTION_RATIO = 0.02
+SPRING_PROPORTION_RATIO = 0.009
+
+
+def calculate_iterations(max_iterations, proportion, length):
+    return int(max_iterations * (-math.exp(-proportion * length) + 1))
+
 
 def find_centers(pos, loops):
     return [pos[loop].mean(0) for loop in loops]
@@ -72,10 +81,7 @@ def optimize(
     loop_points_idxes = [nt for loop in na.loops for nt in loop.nts]
 
     l0 = get_avg_connection_number(pos, na, loop_points_idxes)
-    # l01 = get_avg_connection_number1(pos=pos, na=na)
-
     pos /= l0
-    l0 = 1
 
     repulsion_mask = np.ones((len(A), len(A)))
     target_edge_ratios = np.zeros((len(A), len(A)))
@@ -93,11 +99,9 @@ def optimize(
         for idx2 in neibs:
             if idx1 < len(A_origin) and idx2 < len(A_origin):
                 edge_mask[idx1, idx2] = 1
-
             target_edge_ratios[idx1, idx2] = 1
             target_edge_ratios[idx2, idx1] = 1
 
-    """! про итерирование по хеликсу уже написал"""
     for h in na.knot_helixes:
         for idx, (i, j) in enumerate(h):
             target_edge_ratios[i, j] = helix_ratio
@@ -115,7 +119,6 @@ def optimize(
         centers = find_centers(pos, loops)
         l0 = get_avg_connection_number(pos, na, loop_points_idxes)
 
-        """! этот цикл приемлем, ок"""
         for center_idx, center in enumerate(centers):
             r0 = get_loop_radius(l0, len(loops[center_idx]))
             delta = pos[loops[center_idx]] - center
@@ -129,55 +132,17 @@ def optimize(
         # Calculate elastic forces
         elastic_factors = (-2) * (marker_mask * edge_mask * (1 - (l0 * target_edge_ratios / dists)))[:, :, np.newaxis]
         elastic_forces = (elastic_factors * delta).sum(axis=1)
-        # print(f"{np.shape(elastic_forces)=}")
 
         # Calculate repulsion forces
         repulsion_factors = (repulsion_mask * np.power(dists, -3))[:, :, np.newaxis]
         repulsion_forces = (repulsion_factors * delta).sum(axis=1)
-        # print(f"{np.shape(repulsion_forces)=}")
 
         # Calculate displacements
         displacement = elastic_inf * elastic_forces + repulsion_inf * repulsion_forces
-        # displacement = repulsion_inf * repulsion_forces
-        # displacement = elastic_inf * elastic_forces
-        # print(f"{elastic_forces}")
-        # print(f"{displacement=};")
-
-        """print("here1")
-
-        elastic_force = (
-                (-2) * (1 - (l0 * target_edge_ratios[:len(A), A[:len(A)]] / dists[:len(A), A[:len(A)]])[:, np.newaxis]) * delta[:len(A), A[:len(A)]]
-        ).sum(axis=0)
-
-        print("here2")
-
-        repulsion_force = (
-                (repulsion_mask[:len(A)] * np.power(dists[:len(A), :], -3))[:, np.newaxis] * delta[:len(A), :]
-        ).sum(axis=0)
-
-        print("here3")
-
-        displacement[:len(A)] = (elastic_inf * elastic_force + repulsion_inf * repulsion_force)
-
-        print("here4")"""
-
-
-        """for i in range(len(A)):
-
-            elastic_force = (
-                    (-2) * (1 - (l0 * target_edge_ratios[i, A[i]] / dists[i, A[i]])[:, np.newaxis]) * delta[i, A[i]]
-            ).sum(axis=0)
-
-            repulsion_force = (
-                    (repulsion_mask[i] * np.power(dists[i, :], -3))[:, np.newaxis] * delta[i, :]
-            ).sum(axis=0)
-
-            displacement[i] = (elastic_inf * elastic_force + repulsion_inf * repulsion_force)
-            # displacement[i] = (repulsion_inf * repulsion_force)
-            # displacement[i] = (elastic_inf * elastic_force)"""
-
         displacement += center_inf * center_force
         displacement = displacement * time_step
+
+        # Clipping displacement
         """displacement = np.where(
             np.linalg.norm(displacement, axis=0) > l0 / 1/3,
             displacement * (l0 / 2 / np.linalg.norm(displacement, axis=0)),
@@ -202,26 +167,28 @@ def compute_graph(sequence):
             knots_list.append(i)
             knots_list.append(j)
 
-    """! число итераций должно подбираться в зависимости от размера структуры или числа связей в ней"""
-    pos = nx.spring_layout(G, dim=3, iterations=5000)
+    spring_iterations = calculate_iterations(MAX_SPRINT_ITERATIONS, SPRING_PROPORTION_RATIO, len(adj))
+    gina_iterations = calculate_iterations(MAX_GINA_ITERATIONS, GINA_PROPORTION_RATIO, len(adj))
+
+    print(f"{spring_iterations=}")
+    print(f"{gina_iterations=}")
+
+    pos = nx.spring_layout(G, dim=3, iterations=spring_iterations)
     pos = np.array([value for value in pos.values()])
 
     # print(f"Start optimize for {sequence}")
-    """! число итераций должно подбираться в зависимости от размера структуры или числа связей в ней
-    ! 2000 это потолок"""
     pos, adj_list = optimize(
         na,
         pos,
-        elastic_inf=5,
+        elastic_inf=2,
         repulsion_inf=1.21,
         center_inf=10,
-        time_step=0.0001,
-        iterations=2000,
+        time_step=0.001,
+        iterations=gina_iterations,
         knots_ratio=1.2,
         helix_ratio=1.0,
         add_counters_node=True
     )
-    # print(f"------ End for {sequence}")
     return pos.tolist(), adj_list, knots_list
 
 
